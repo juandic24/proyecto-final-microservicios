@@ -1,1 +1,2 @@
-Proyecto final de la materia de profundización de microservicios
+Final project for the microservices course. A system built with a microservices architecture that includes multiple services.
+It is not complete.
