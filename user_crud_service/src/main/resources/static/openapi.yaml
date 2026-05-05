@@ -1,0 +1,405 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: API de Gestión de Usuarios
+  description: API para gestionar usuarios, incluyendo registro, operaciones CRUD, login y recuperación de contraseña.
+
+servers:
+  - url: http://localhost:8080
+    description: URL de ejemplo
+
+paths:
+  /usuarios:
+    post:
+      summary: Registro de un nuevo usuario
+      description: Permite registrar un nuevo usuario proporcionando sus datos.
+      tags: [Usuarios]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioRegistro"
+      responses:
+        "201":
+          description: Usuario registrado con éxito.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistroExitoso"
+        "400":
+          description: Entrada inválida, fallo en el registro.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: El usuario ya existe.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /usuarios/{usuarioId}:
+    get:
+      summary: Obtener detalles del usuario
+      description: Obtiene la información del usuario según el ID proporcionado.
+      tags: [Usuarios]
+      parameters:
+        - in: path
+          name: usuarioId
+          schema:
+            type: string
+          required: true
+          description: ID único del usuario.
+      responses:
+        "200":
+          description: Detalles del usuario obtenidos con éxito.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "404":
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No autorizado, se requiere autenticación.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - bearerAuth: []
+
+    put:
+      summary: Actualizar detalles del usuario
+      description: Permite actualizar la información del usuario por ID.
+      tags: [Usuarios]
+      parameters:
+        - in: path
+          name: usuarioId
+          schema:
+            type: string
+          required: true
+          description: ID único del usuario.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioActualizacion"
+      responses:
+        "200":
+          description: Usuario actualizado con éxito.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exito"
+        "400":
+          description: Entrada inválida, fallo en la actualización.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - bearerAuth: []
+
+    delete:
+      summary: Eliminar un usuario
+      description: Elimina a un usuario según el ID proporcionado.
+      tags: [Usuarios]
+      parameters:
+        - in: path
+          name: usuarioId
+          schema:
+            type: string
+          required: true
+          description: ID único del usuario.
+      responses:
+        "200":
+          description: Usuario eliminado con éxito.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exito"
+        "404":
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No autorizado, se requiere autenticación.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - bearerAuth: []
+
+  /login:
+    post:
+      summary: Inicio de sesión del usuario
+      description: Autentica a un usuario proporcionando su nombre de usuario y contraseña.
+      tags: [Autenticación]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Login"
+      responses:
+        "200":
+          description: Inicio de sesión exitoso, devuelve token JWT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        "401":
+          description: No autorizado, credenciales inválidas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: Formato de solicitud inválido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security: [] # No se requiere autenticación para login
+
+  /recuperacion-clave:
+    post:
+      summary: Recuperación de contraseña
+      description: Envía un correo con un enlace para restablecer la contraseña.
+      tags: [Autenticación]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecuperacionClave"
+      responses:
+        "200":
+          description: Correo de recuperación enviado con éxito.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exito"
+        "404":
+          description: Correo no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: Formato de correo inválido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security: [] # No se requiere autenticación para recuperación de clave
+  /health:
+    get:
+      summary: Estado general del microservicio
+      description: Verifica el estado general del microservicio.
+      responses:
+        "200":
+          description: El servicio está funcionando correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "UP"
+                  message:
+                    type: string
+                    example: "Service is operational"
+        "503":
+          description: El servicio está inactivo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "DOWN"
+                  message:
+                    type: string
+                    example: "Service is not operational"
+  /health/live:
+    get:
+      summary: Verificación de disponibilidad (liveness)
+      description: Comprueba si el servicio está vivo y responde a solicitudes.
+      responses:
+        "200":
+          description: El servicio está vivo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ALIVE"
+                  message:
+                    type: string
+                    example: "Service is alive"
+        "500":
+          description: El servicio no está respondiendo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "DEAD"
+                  message:
+                    type: string
+                    example: "Service is not responding"
+
+  /health/ready:
+    get:
+      summary: Verificación de disponibilidad de recursos (readiness)
+      description: Comprueba si el servicio está listo para aceptar tráfico.
+      responses:
+        "200":
+          description: El servicio está listo para recibir tráfico.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "READY"
+                  message:
+                    type: string
+                    example: "Service is ready to accept traffic"
+        "503":
+          description: El servicio no está listo para recibir tráfico.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "NOT_READY"
+                  message:
+                    type: string
+                    example: "Service is not ready to accept traffic"
+
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Usuario:
+      type: object
+      properties:
+        usuarioId:
+          type: string
+        nombre_usuario:
+          type: string
+        correo:
+          type: string
+        contraseña:
+          type: string
+      required:
+        - usuarioId
+        - nombre_usuario
+        - correo
+
+    UsuarioRegistro:
+      type: object
+      properties:
+        nombre_usuario:
+          type: string
+        correo:
+          type: string
+        contraseña:
+          type: string
+      required:
+        - nombre_usuario
+        - correo
+        - contraseña
+
+    UsuarioActualizacion:
+      type: object
+      properties:
+        nombre_usuario:
+          type: string
+        correo:
+          type: string
+        contraseña:
+          type: string
+
+    Login:
+      type: object
+      properties:
+        nombre_usuario:
+          type: string
+        contraseña:
+          type: string
+      required:
+        - nombre_usuario
+        - contraseña
+
+    RecuperacionClave:
+      type: object
+      properties:
+        correo:
+          type: string
+      required:
+        - correo
+
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+
+    RegistroExitoso:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Usuario registrado exitosamente."
+        usuarioId:
+          type: string
+          example: "123456"
+
+    Exito:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operación realizada con éxito."
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Error en la operación."

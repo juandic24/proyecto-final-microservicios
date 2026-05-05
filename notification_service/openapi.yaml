@@ -1,0 +1,258 @@
+openapi: 3.0.0
+info:
+  title: Notification Service API
+  description: API para el manejo de notificaciones síncronas y asíncronas.
+  version: 1.0.0
+servers:
+  - url: http://notification-service:3001
+    description: Servidor del Notification Service
+
+paths:
+  /notifications:
+    post:
+      summary: Crear y enviar notificación de forma síncrona
+      operationId: createSyncNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipients:
+                  type: array
+                  items:
+                    type: string
+                  description: Lista de destinatarios de la notificación
+                channels:
+                  type: array
+                  items:
+                    type: string
+                  description: Lista de canales para enviar la notificación (E-Mail, SMS, WhatsApp, etc.)
+                message:
+                  type: object
+                  properties:
+                    subject:
+                      type: string
+                      description: Asunto de la notificación
+                    body:
+                      type: string
+                      description: Cuerpo del mensaje de la notificación
+      responses:
+        '200':
+          description: Notificación enviada con éxito
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  notification:
+                    $ref: '#/components/schemas/Notification'
+                  result:
+                    type: object
+                    description: Resultado del envío de la notificación
+        '500':
+          description: Error al enviar la notificación
+
+    get:
+      summary: Obtener todas las notificaciones
+      operationId: getAllNotifications
+      responses:
+        '200':
+          description: Lista de todas las notificaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+        '500':
+          description: Error al obtener las notificaciones
+
+  /notifications/async:
+    post:
+      summary: Crear y enviar notificación de forma asíncrona
+      operationId: createAsyncNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipients:
+                  type: array
+                  items:
+                    type: string
+                  description: Lista de destinatarios de la notificación
+                channels:
+                  type: array
+                  items:
+                    type: string
+                  description: Lista de canales para enviar la notificación (E-Mail, SMS, WhatsApp, etc.)
+                message:
+                  type: object
+                  properties:
+                    subject:
+                      type: string
+                      description: Asunto de la notificación
+                    body:
+                      type: string
+                      description: Cuerpo del mensaje de la notificación
+      responses:
+        '200':
+          description: Notificación enviada con éxito (asíncrona)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  notification:
+                    $ref: '#/components/schemas/Notification'
+        '500':
+          description: Error al enviar la notificación
+
+  /notifications/{id}:
+    get:
+      summary: Obtener una notificación específica
+      operationId: getNotificationById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID de la notificación a obtener
+      responses:
+        '200':
+          description: Detalles de la notificación solicitada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '404':
+          description: Notificación no encontrada
+        '500':
+          description: Error al obtener la notificación
+
+  # Rutas de salud
+  /health:
+    get:
+      summary: Obtener el estado de salud general del servicio
+      operationId: getHealth
+      responses:
+        '200':
+          description: Estado general del servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "UP"
+                  checks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: "Readiness check"
+                        status:
+                          type: string
+                          example: "UP"
+                        data:
+                          type: object
+                          properties:
+                            from_:
+                              type: string
+                              example: "2024-11-14T23:09:26.736728Z"
+                            status:
+                              type: string
+                              example: "READY"
+        '500':
+          description: Error al obtener el estado de salud
+
+  /health/ready:
+    get:
+      summary: Comprobar si el servicio está listo para manejar peticiones
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Información sobre la disponibilidad del servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "UP"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  uptime:
+                    type: string
+                    example: "0:10:23.139711"
+        '500':
+          description: Error al verificar la disponibilidad del servicio
+
+  /health/live:
+    get:
+      summary: Comprobar si el servicio está vivo
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Información sobre el estado de actividad del servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "UP"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  uptime:
+                    type: string
+                    example: "0:10:03.832625"
+        '500':
+          description: Error al verificar la actividad del servicio
+
+components:
+  schemas:
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID de la notificación
+        recipients:
+          type: array
+          items:
+            type: string
+          description: Lista de destinatarios de la notificación
+        channels:
+          type: array
+          items:
+            type: string
+          description: Canales de envío de la notificación
+        message:
+          type: object
+          properties:
+            subject:
+              type: string
+              description: Asunto de la notificación
+            body:
+              type: string
+              description: Cuerpo del mensaje
+        state:
+          type: string
+          description: Estado de la notificación (e.g., pending, sent)

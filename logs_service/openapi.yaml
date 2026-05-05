@@ -1,0 +1,122 @@
+openapi: 3.0.0
+info:
+  title: Log Management API
+  description: API para gestionar el almacenamiento y consulta de logs con opciones de filtrado, paginación y autenticación.
+  version: 1.0.0
+servers:
+  - url: http://logs-service:8000
+    description: Servidor local de desarrollo
+
+paths:
+  /logs:
+    get:
+      summary: Obtener logs con filtros y paginación
+      description: Permite obtener todos los logs registrados, con filtros opcionales por rango de fechas, tipo de log y aplicación que lo genera. Los resultados están ordenados por la fecha de creación y se pueden paginar.
+      parameters:
+        - in: query
+          name: application_name
+          schema:
+            type: string
+          description: Nombre de la aplicación que genera el log
+        - in: query
+          name: log_type
+          schema:
+            type: string
+          description: Tipo de log (error, info, etc.)
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date-time
+          description: Fecha de inicio del rango de fechas para la consulta
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date-time
+          description: Fecha de fin del rango de fechas para la consulta
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            default: 0
+          description: Número de logs a omitir para paginación
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Número de logs a devolver por página
+      responses:
+        '200':
+          description: Lista de logs obtenidos con éxito
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogResponse'
+        '401':
+          description: No autorizado, autenticación requerida
+    post:
+      summary: Crear un nuevo log
+      description: Permite registrar un nuevo log en el sistema.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogCreate'
+      responses:
+        '201':
+          description: Log creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogResponse'
+        '400':
+          description: Datos inválidos en la solicitud
+        '401':
+          description: No autorizado, autenticación requerida
+
+components:
+  schemas:
+    LogCreate:
+      type: object
+      properties:
+        application_name:
+          type: string
+          description: Nombre de la aplicación que genera el log
+        log_type:
+          type: string
+          description: Tipo de log (por ejemplo, error, info, debug)
+        class_module:
+          type: string
+          description: Clase o módulo que genera el log
+        summary:
+          type: string
+          description: Resumen del log
+        description:
+          type: string
+          description: Descripción detallada del log
+      required:
+        - application_name
+        - log_type
+        - class_module
+        - summary
+        - description
+
+    LogResponse:
+      allOf:
+        - $ref: '#/components/schemas/LogCreate'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: ID único del log
+            created_at:
+              type: string
+              format: date-time
+              description: Fecha y hora de creación del log
+
+

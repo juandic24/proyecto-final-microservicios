@@ -1,0 +1,176 @@
+services:
+  # postgreDB servicio CRUD usuarios
+  user-crud-service-database:
+    image: postgres:latest
+    container_name: user-crud-service-database
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_USERS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB_USERS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # postgreDB para servicio de logs
+  logs-service-database:
+    image: postgres:latest
+    container_name: logs-service-database
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_LOGS}
+    volumes:
+      - postgres_data2:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB_LOGS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # MongoDB para el servicio de monitoreo
+  monitoring-service-database:
+    image: mongo:latest
+    container_name: monitoring-service-database
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - backend
+
+  # MongoDB para el servicio de notificaciones
+  notification-service-database:
+    image: mongo:latest
+    container_name: notification-service-database
+    volumes:
+      - mongo_data2:/data/db
+    ports:
+      - "27018:27017"
+    networks:
+      - backend
+
+  # Servicio RabbitMQ
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Aplicación Java (Spring Boot)
+  user-crud-service:
+    build:
+      context: .
+      dockerfile: user_crud_service/Dockerfile
+    container_name: user-crud-service
+    environment:
+      DB_HOST: user-crud-service-database
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB_USERS}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on:
+      user-crud-service-database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+    networks:
+      - backend
+
+  # Servicio de logs
+  logs-service:
+    build:
+      context: .
+      dockerfile: logs_service/Dockerfile
+    container_name: logs-service
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@logs-service-database:5432/${POSTGRES_DB_LOGS}
+    ports:
+      - "8000:8000"
+    depends_on:
+      logs-service-database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # Servicio de monitoreo
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: monitoring_service/Dockerfile
+    container_name: monitoring-service
+    environment:
+      - MONGO_URI=mongodb://monitoring-service-database:27017/monitoring
+      - MONITOR_INTERVAL=60000
+      - NOTIFICATION_EMAIL=monitoring@ejemplo.com
+    ports:
+      - "3000:3000"
+    depends_on:
+      - monitoring-service-database
+      - rabbitmq
+    networks:
+      - backend
+    restart: always
+
+  # Servicio de notificaciones
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification_service/Dockerfile
+    container_name: notification-service
+    environment:
+      MONGO_URI: mongodb://notification-service-database:27017/notification
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - notification-service-database
+      - rabbitmq
+    networks:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data: {}
+  postgres_data2: {}
+  mongo_data: {}
+  mongo_data2: {}
+
+networks:
+  backend:

@@ -1,0 +1,150 @@
+openapi: 3.0.0
+info:
+  title: Monitoring Service API
+  description: API para registrar y monitorear el estado de microservicios.
+  version: 1.0.0
+servers:
+  - url: http://monitoring-service:3000
+paths:
+  /register:
+    post:
+      summary: Registrar un nuevo microservicio y comenzar su monitoreo
+      operationId: registerMicroservice
+      requestBody:
+        description: Datos necesarios para registrar un microservicio
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "User Service"
+                  description: Nombre del microservicio
+                endpoint:
+                  type: string
+                  example: "http://user-service:3000"
+                  description: URL del endpoint del microservicio
+                frequency:
+                  type: integer
+                  example: 10
+                  description: Frecuencia de monitoreo en milisegundos
+                emails:
+                  type: array
+                  items:
+                    type: string
+                  example: ["admin@example.com"]
+                  description: Lista de emails para notificaciones de estado
+              required:
+                - name
+                - endpoint
+                - frequency
+                - emails
+      responses:
+        "201":
+          description: Microservicio registrado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Microservicio registrado y monitoreo iniciado"
+        "500":
+          description: Error al registrar el microservicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Error al registrar el microservicio"
+                  error:
+                    type: string
+                    example: "Database connection error"
+
+  /health:
+    get:
+      summary: Obtener el estado de todos los microservicios registrados
+      operationId: getHealthAll
+      responses:
+        "200":
+          description: Estado de todos los microservicios registrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: "User Service"
+                    status:
+                      type: string
+                      example: "Online"
+        "500":
+          description: Error al obtener el estado de los microservicios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Error al obtener el estado de los microservicios"
+                  error:
+                    type: string
+                    example: "Internal server error"
+
+  /health/{microservicio}:
+    get:
+      summary: Obtener el estado de un microservicio específico
+      operationId: getHealthSingle
+      parameters:
+        - name: microservicio
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Nombre del microservicio
+      responses:
+        "200":
+          description: Estado del microservicio especificado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "User Service"
+                  status:
+                    type: string
+                    example: "Online"
+        "404":
+          description: Microservicio no encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Microservicio no encontrado"
+        "503":
+          description: Microservicio inactivo o no disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "User Service"
+                  status:
+                    type: string
+                    example: "Offline"
