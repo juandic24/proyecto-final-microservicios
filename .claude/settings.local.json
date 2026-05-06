@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" http://localhost:8080/health)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" http://localhost:8080/swagger-ui.html)",
+      "Bash(docker compose *)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" -X POST http://localhost:8080/usuarios -H \"Content-Type: application/json\" -d '{\"nombre_usuario\":\"testuser2\",\"correo\":\"t2@test.com\",\"contraseña\":\"pass123\"}')",
+      "Bash(docker exec *)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" -X POST http://localhost:8080/usuarios -H \"Content-Type: application/json\" -d '{\"nombre_usuario\":\"testX\",\"correo\":\"x@x.com\",\"contraseña\":\"pass\"}')",
+      "Bash(printf '{\"nombre_usuario\":\"testX\",\"correo\":\"x@x.com\",\"contrase\\\\xc3\\\\xb1a\":\"pass123\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" -X POST http://localhost:8080/usuarios -H \"Content-Type: application/json\" -d @/tmp/reg.json)"
+    ]
+  }
+}

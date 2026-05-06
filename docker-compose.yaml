@@ -108,6 +108,25 @@ services:
     networks:
       - backend
 
+  # API Gateway — punto de entrada único para todos los servicios
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    container_name: api-gateway
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8090:8090"
+    depends_on:
+      - user-crud-service
+      - notification-service
+      - logs-service
+      - monitoring-service
+    networks:
+      - backend
+    restart: always
+
   # Servicio de logs
   logs-service:
     build:
