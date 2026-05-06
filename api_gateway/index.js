@@ -14,13 +14,40 @@ const SERVICES = {
   monitoring:   'http://monitoring-service:3000',
 };
 
-// Hop-by-hop headers que no se deben reenviar al servicio destino
 const HOP_BY_HOP = new Set([
   'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
   'te', 'trailers', 'transfer-encoding', 'upgrade',
 ]);
 
-function proxyTo(target, pathOverride) {
+// Envía un log al logs-service de forma asíncrona (fire-and-forget).
+// Si el logs-service está caído, el error se descarta silenciosamente.
+function sendLog(serviceName, statusCode, method, originalUrl) {
+  const logType = statusCode >= 500 ? 'ERROR' : statusCode >= 400 ? 'WARNING' : 'INFO';
+  const data = JSON.stringify({
+    application_name: serviceName,
+    log_type: logType,
+    class_module: 'api-gateway',
+    summary: `${method} ${originalUrl} → ${statusCode}`,
+    description: `Request proxied to ${serviceName}`,
+  });
+
+  const logsUrl = new URL(SERVICES.logs);
+  const req = http.request({
+    hostname: logsUrl.hostname,
+    port: logsUrl.port || 80,
+    path: '/logs/',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(data),
+    },
+  });
+  req.on('error', () => {}); // descarta errores — el logging no debe afectar el request principal
+  req.write(data);
+  req.end();
+}
+
+function proxyTo(target, pathOverride, serviceName) {
   const url = new URL(target);
   return (req, res) => {
     const path = pathOverride !== undefined ? pathOverride(req.url) : req.url;
@@ -40,8 +67,11 @@ function proxyTo(target, pathOverride) {
     };
 
     const proxyReq = http.request(options, (proxyRes) => {
-      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      const statusCode = proxyRes.statusCode;
+      res.writeHead(statusCode, proxyRes.headers);
       proxyRes.pipe(res);
+      // Al terminar de enviar la respuesta, registrar el log
+      proxyRes.on('end', () => sendLog(serviceName, statusCode, req.method, req.originalUrl));
     });
 
     proxyReq.on('error', (err) => {
@@ -75,21 +105,11 @@ app.use(logger);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-// Público: registro → POST /usuarios en user-crud-service
-app.use('/api/auth/registro', proxyTo(SERVICES.userCrud, () => '/usuarios'));
-
-// Público: login y recuperacion-clave
-// Express stripea /api/auth → req.url queda como /login o /recuperacion-clave
-app.use('/api/auth', proxyTo(SERVICES.userCrud));
-
-// Protegido: CRUD de usuarios
-// Express stripea /api/usuarios → req.url queda como / o /:id
-// Reescribir agregando /usuarios de vuelta
-app.use('/api/usuarios', authenticate, proxyTo(SERVICES.userCrud, (path) => `/usuarios${path}`));
-
-// Protegido: demás servicios — path restante se reenvía directo
-app.use('/api/notificaciones', authenticate, proxyTo(SERVICES.notification));
-app.use('/api/logs',           authenticate, proxyTo(SERVICES.logs));
-app.use('/api/monitoring',     authenticate, proxyTo(SERVICES.monitoring));
+app.use('/api/auth/registro', proxyTo(SERVICES.userCrud, () => '/usuarios', 'user-crud-service'));
+app.use('/api/auth',          proxyTo(SERVICES.userCrud, undefined, 'user-crud-service'));
+app.use('/api/usuarios',      authenticate, proxyTo(SERVICES.userCrud, (p) => `/usuarios${p}`, 'user-crud-service'));
+app.use('/api/notificaciones',authenticate, proxyTo(SERVICES.notification, undefined, 'notification-service'));
+app.use('/api/logs',          authenticate, proxyTo(SERVICES.logs, undefined, 'logs-service'));
+app.use('/api/monitoring',    authenticate, proxyTo(SERVICES.monitoring, undefined, 'monitoring-service'));
 
 app.listen(PORT, () => console.log(`API Gateway corriendo en puerto ${PORT}`));
